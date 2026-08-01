@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kemsinin Dubber Pro - AI-Powered Video Dubbing Studio</title>
+    <!-- Google Fonts for premium look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanuman:wght@400;700;900&family=Kantumruy+Pro:ital,wght@0,300;0,400;0,700;1,400&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Header -->
+        <header class="main-header">
+            <div class="logo-area">
+                <div class="logo-icon-wrapper">
+                    <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" stroke="var(--magenta)"></circle>
+                        <path d="M12 6v12M8 10v4M16 8v8" stroke="var(--cyan)"></path>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>KEMSININ DUBBER</h1>
+                    <div class="subtitle">AI-POWERED VIDEO DUBBING STUDIO</div>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <button id="btn-batch-dubber" class="nav-btn btn-batch">
+                    👥 Batch Dubber
+                </button>
+                <button id="btn-translate-video" class="nav-btn btn-translate-video">
+                    🌐 Translate Video
+                </button>
+                <button id="btn-upload-video" class="nav-btn btn-upload-video">
+                    📁 Upload Video
+                </button>
+                <button id="btn-upload-srt" class="nav-btn btn-upload-srt">
+                    📄 Upload SRT
+                </button>
+                <button id="btn-transcript" class="nav-btn btn-transcript">
+                    📝 Video Transcript
+                </button>
+                <button id="btn-effect" class="nav-btn btn-effect">
+                    🪄 Effect
+                </button>
+            </nav>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Left Column: Player & Preview -->
+            <section class="panel-left">
+                <div class="glass-card preview-card">
+                    <div class="preview-header">
+                        <span class="live-badge">
+                            <span class="live-dot"></span>● LIVE PREVIEW
+                        </span>
+                        <span id="loaded-file-name" class="current-file-label">NO VIDEO LOADED</span>
+                    </div>
+
+                    <!-- Player Wrapper with Canvas Overlay -->
+                    <div class="player-wrapper">
+                        <!-- Drag drop overlay -->
+                        <div id="drag-drop-overlay" class="drop-overlay">
+                            <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                            <p>Drag and Drop Video File Here or Click Upload</p>
+                        </div>
+                        <canvas id="visualizer-canvas"></canvas>
+                        <video id="video-player"></video>
+                    </div>
+
+                    <!-- Audio Spectrum -->
+                    <div class="spectrum-container">
+                        <canvas id="spectrum-canvas"></canvas>
+                    </div>
+
+                    <!-- Timeline Progress -->
+                    <div class="timeline-container">
+                        <input type="range" id="timeline-slider" class="timeline-slider" value="0" min="0" step="0.01">
+                        <div class="time-readout">
+                            <span id="current-time">00:00:00,000</span>
+                            <span class="divider">/</span>
+                            <span id="total-duration">00:02:21,000</span>
+                        </div>
+                    </div>
+
+                    <!-- Playback Controls -->
+                    <div class="controls-row">
+                        <div class="playback-buttons">
+                            <button id="btn-play" class="control-btn play-btn" title="Play / Pause">
+                                <svg id="play-icon" class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                                <svg id="pause-icon" class="control-icon hidden" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="6" y="4" width="4" height="16"/>
+                                    <rect x="14" y="4" width="4" height="16"/>
+                                </svg>
+                            </button>
+                            <button id="btn-stop" class="control-btn" title="Stop">
+                                <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="4" y="4" width="16" height="16"/>
+                                </svg>
+                            </button>
+                            <button id="btn-volume" class="control-btn" title="Mute/Unmute">
+                                <svg id="vol-high-icon" class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                </svg>
+                                <svg id="vol-mute-icon" class="control-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                    <line x1="23" y1="9" x2="17" y2="15"/>
+                                    <line x1="17" y1="9" x2="23" y2="15"/>
+                                </svg>
+                            </button>
+                            <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.05" value="0.8">
+                        </div>
+                        <div id="cassette-tape" class="cassette-widget">
+                            <div class="cassette-reel">
+                                <div class="reel-spokes"></div>
+                            </div>
+                            <div class="cassette-reel">
+                                <div class="reel-spokes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left Column Bottom Action Tools -->
+                <div class="action-grid">
+                    <button id="btn-cutter" class="action-btn btn-cutter">
+                        ✂ CUTTER
+                    </button>
+                    <button id="btn-merger" class="action-btn btn-merger">
+                        🔗 MERGER
+                    </button>
+                    <button id="btn-settings-bottom" class="action-btn btn-settings">
+                        ⚙ Setting
+                    </button>
+                    <button id="btn-export-video" class="action-btn btn-export">
+                        ⬇ EXPORT VIDEO
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Column: Subtitle Editor -->
+            <section class="panel-right">
+                <div class="glass-card dubber-card">
+                    <!-- Control Ribbon -->
+                    <div class="control-ribbon">
+                        <div class="ribbon-voice-selection">
+                            <span class="voice-label">
+                                <svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+                                </svg>
+                                Voice:
+                            </span>
+                            <div class="select-wrapper">
+                                <select id="global-voice-select" class="voice-select">
+                                    <option value="piseth_male">👤 Piseth (Male)</option>
+                                    <option value="sophea_female">👤 Sophea (Female)</option>
+                                    <option value="dara_male">👤 Dara (Male)</option>
+                                    <option value="srey_female">👤 Srey (Female)</option>
+                                    <option value="bora_male">👤 Bora (Male)</option>
+                                </select>
+                            </div>
+                            <button id="btn-apply-all-voices" class="ribbon-btn btn-apply-all">✓ Apply to All</button>
+                        </div>
+                        <div class="ribbon-actions">
+                            <button id="btn-remove-vocal" class="ribbon-btn btn-remove-vocal">🎙 Remove Vocal</button>
+                            <button id="btn-save-srt" class="ribbon-btn btn-save-srt">💾 Save SRT</button>
+                        </div>
+                    </div>
+
+                    <!-- Table List -->
+                    <div class="table-container">
+                        <table class="subtitles-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">#</th>
+                                    <th style="width: 120px; text-align: center;">START</th>
+                                    <th style="width: 120px; text-align: center;">END</th>
+                                    <th>TEXT</th>
+                                    <th style="width: 140px;">VOICE</th>
+                                    <th style="width: 100px;">SPEED</th>
+                                    <th style="width: 50px; text-align: center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="subtitles-tbody">
+                                <!-- Generated Dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer Add Segment Button -->
+                    <div class="table-footer">
+                        <button id="btn-add-segment" class="btn-add-segment">
+                            <svg class="add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add Subtitle Segment
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="video-file-input" style="display: none;" accept="video/*">
+    <input type="file" id="srt-file-input" style="display: none;" accept=".srt">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notification">
+        <span id="toast-message" class="toast-message">Notification</span>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>⚙ Dubber Studio Settings</h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="settings-pitch">Voice Pitch Multiplier</label>
+                    <input type="range" id="settings-pitch" class="form-range" min="0.5" max="1.5" step="0.05" value="1.0">
+                    <span id="pitch-val-readout" class="range-value">1.0 (Normal)</span>
+                </div>
+                <div class="form-group check-group" style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="settings-realtime-dub" checked style="accent-color: var(--cyan); width: 18px; height: 18px; cursor: pointer;">
+                    <label for="settings-realtime-dub" style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-muted);">Enable Real-Time AI Dubbing (Khmer TTS)</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-secondary modal-cancel">Cancel</button>
+                <button id="btn-save-settings" class="modal-btn btn-primary">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cutter Modal -->
+    <div id="modal-cutter" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>✂ Split Subtitle Segment</h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="split-info-box">
+                    <div class="info-row">
+                        <span>Target Segment:</span>
+                        <strong id="cut-row-num">Segment #1</strong>
+                    </div>
+                    <div class="info-row">
+                        <span>Time Bounds:</span>
+                        <strong id="cut-row-times">00:00:06,020 - 00:00:07,300</strong>
+                    </div>
+                    <div class="info-row">
+                        <span>Split Time (Playhead):</span>
+                        <strong id="cut-split-time" class="cyan-text">00:00:06,660</strong>
+                    </div>
+                </div>
+                <div id="cut-warning" class="warning-text">Ready to split segment.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-secondary modal-cancel">Cancel</button>
+                <button id="btn-confirm-cut" class="modal-btn btn-primary">Confirm Split</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merger Modal -->
+    <div id="modal-merger" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>🔗 Merge Subtitle Segments</h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="merge-select-first">Select Segments to Merge</label>
+                    <select id="merge-select-first" class="form-select">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="preview-title">Merge Preview</div>
+                <div id="merge-preview-content" class="preview-box">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-secondary modal-cancel">Cancel</button>
+                <button id="btn-confirm-merge" class="modal-btn btn-primary">Confirm Merge</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Dubber Modal -->
+    <div id="modal-batch" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>👥 Batch Dubber Studio</h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-muted); font-size: 11px; margin-top:-5px;">Process multiple video files in parallel utilizing background worker queues.</p>
+                <div id="batch-drop-zone" class="batch-drop-zone">
+                    <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:30px; height:30px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    <span>Drag and Drop Multiple Videos Here</span>
+                </div>
+                <div class="preview-title">Files in Queue</div>
+                <div id="batch-file-list" class="batch-file-list">
+                    <div class="no-files-notice">No files added yet</div>
+                </div>
+                
+                <!-- Batch Settings Panel -->
+                <div class="batch-settings-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; margin-bottom: 5px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🗣️ Voice (សំឡេង)</label>
+                        <select id="batch-voice" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
+                            <option value="female" selected>👩 Female Voice (សំឡេងស្រី)</option>
+                            <option value="male">👨 Male Voice (សំឡេងប្រុស)</option>
+                            <option value="auto">🤖 Auto Detect (ស្វ័យប្រវត្តិ)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🎚️ Speed (ល្បឿន)</label>
+                        <select id="batch-speed" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
+                            <option value="normal" selected>Normal (ធម្មតា)</option>
+                            <option value="slow">Slow (យឺត)</option>
+                            <option value="fast">Fast (លឿន)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🤖 TTS Model (ម៉ូដែល TTS)</label>
+                        <select id="batch-tts" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
+                            <option value="kiri-edge" selected>Automatic — Kiri → Edge TTS</option>
+                            <option value="gemini-tts">Gemini TTS Premium</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🎙️ VoxCPM2 Settings</label>
+                        <select id="batch-voxcpm" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
+                            <option value="none" selected>Not needed (មិនចាំបាច់)</option>
+                            <option value="enabled">Enabled (សកម្ម)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Batch progress simulated state -->
+                <div id="batch-processing" class="hidden text-center" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; width: 100%;">
+                    <div class="progress-bar-track">
+                        <div id="batch-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="batch-status-text" style="color: var(--text-muted); font-size: 11px;">Initializing...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-secondary modal-cancel">Cancel</button>
+                <button id="btn-process-batch" class="modal-btn btn-primary" disabled>Start Batch Dubbing</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcript Modal -->
+    <div id="modal-transcript" class="modal-overlay">
+        <div class="modal-card large-card">
+            <div class="modal-header">
+                <h2>📝 Full Script Transcript</h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="transcript-textarea-wrapper">
+                    <textarea id="transcript-content-text" class="transcript-textarea" readonly></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div class="transcript-toolbar">
+                    <button id="btn-copy-transcript" class="modal-btn btn-primary">📋 Copy</button>
+                    <button id="btn-download-transcript" class="modal-btn btn-secondary">💾 Download</button>
+                </div>
+                <button class="modal-btn btn-secondary modal-cancel">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="modal-export" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>⬇ Exporting Dubbed Video Layout</h2>
+                <button id="btn-export-close-x" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading State -->
+                <div id="export-processing" class="export-loading-state">
+                    <div class="spinner-container">
+                        <div class="dual-ring-spinner"></div>
+                        <span class="spinner-logo">AI</span>
+                    </div>
+                    <div class="export-step-title text-glow">Processing Render Pipeline</div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-track">
+                            <div id="export-progress-fill" class="progress-bar-fill"></div>
+                        </div>
+                        <span id="export-progress-pct" class="progress-percentage">0%</span>
+                    </div>
+                    <div id="export-status-text" class="export-step-sub">Synthesizing audio layers...</div>
+                </div>
+
+                <!-- Success State -->
+                <div id="export-success" class="export-success-state hidden">
+                    <div class="success-icon-wrapper animate-pop">
+                        <svg class="success-check" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="export-step-title text-glow text-center">Render Pipeline Complete!</div>
+                    <p style="color: var(--text-muted); font-size: 11px; text-align: center;">AI voice synthesizers and backing soundtracks successfully embedded.</p>
+                    <div class="download-card">
+                        <div class="download-info">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 7l-7 5 7 5V7z"/>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                            <div class="download-meta">
+                                <span id="export-download-name" class="file-name">video_dubbed.mp4</span>
+                                <span class="file-size">45.2 MB (Estimated)</span>
+                            </div>
+                        </div>
+                        <a id="export-download-link" class="modal-btn btn-primary download-action-btn" download>
+                            ⬇ Download File
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-export-cancel" class="modal-btn btn-secondary">Cancel Process</button>
+                <button id="btn-export-done" class="modal-btn btn-primary hidden">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Translate Video Modal -->
+    <div id="modal-translate" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>🌐 Video Translation Studio</h2>
+                <button id="btn-translate-close-x" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-muted); font-size: 11px; margin-top:-5px;">Translate your video using advanced AI models (Google Gemini or OpenAI Whisper) with automated vocal tracking.</p>
+                
+                <div class="form-group">
+                    <label for="translate-engine">AI Engine</label>
+                    <select id="translate-engine" class="form-select">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="whisper">OpenAI Whisper</option>
+                    </select>
+                </div>
+                
+                <div class="form-group check-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="translate-detect-gender" checked>
+                    <label for="translate-detect-gender" style="font-size: 13px; font-weight: 600; cursor: pointer;">Auto Detect Male/Female Voices</label>
+                </div>
+                
+                <div id="translate-note" style="color: var(--cyan); font-size: 10px; font-style: italic; min-height: 28px; border: 1px solid rgba(0, 242, 254, 0.15); padding: 8px; border-radius: 6px; background: rgba(0, 242, 254, 0.02);">
+                    Google Gemini strictly operates in Auto Detect Male/Female mode to construct optimal conversational maps.
+                </div>
+                
+                <!-- Translation progress simulated state -->
+                <div id="translate-processing" class="hidden text-center" style="display: flex; flex-direction: column; gap: 12px; margin-top: 5px;">
+                    <div class="progress-bar-track">
+                        <div id="translate-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="translate-status-text" style="color: var(--text-muted); font-size: 11px;">Initializing...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-translate-cancel" class="modal-btn btn-secondary modal-cancel">Cancel</button>
+                <button id="btn-process-translate" class="modal-btn fill btn-primary">🚀 Start Translation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Script Link -->
+    <script type="module" src="/app.js"></script>
+</body>
+</html>
