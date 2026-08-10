@@ -140,8 +140,23 @@ body {
 .btn-batch {
     background: linear-gradient(135deg, #c2185b 0%, var(--magenta) 100%);
 }
+.btn-hero-batch {
+    background: linear-gradient(135deg, #e91e63 0%, #ff2a85 50%, #00f2fe 100%) !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 0 15px rgba(255, 42, 133, 0.5), 0 0 30px rgba(0, 242, 254, 0.3) !important;
+    animation: batchHeroGlow 3s infinite alternate ease-in-out;
+}
+@keyframes batchHeroGlow {
+    0% {
+        box-shadow: 0 0 12px rgba(255, 42, 133, 0.4), 0 0 20px rgba(0, 242, 254, 0.2);
+    }
+    100% {
+        box-shadow: 0 0 22px rgba(255, 42, 133, 0.8), 0 0 35px rgba(0, 242, 254, 0.6);
+    }
+}
 .btn-batch:hover {
-    box-shadow: 0 0 15px rgba(253, 38, 122, 0.4);
+    box-shadow: 0 0 20px rgba(253, 38, 122, 0.6);
     transform: translateY(-2px);
 }
 
@@ -319,6 +334,10 @@ body {
     text-align: center;
     transition: opacity 0.3s ease;
     cursor: pointer;
+}
+
+.drop-overlay * {
+    pointer-events: none;
 }
 
 .drop-overlay p {
@@ -1211,6 +1230,10 @@ body {
     text-align: center;
     cursor: pointer;
     transition: all 0.3s;
+}
+
+.batch-drop-zone * {
+    pointer-events: none;
 }
 
 .batch-drop-zone:hover {
