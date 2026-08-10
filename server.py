@@ -19,9 +19,15 @@ Handler.extensions_map.update({
     '.srt': 'text/plain',
 })
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 print(f"\n=======================================================")
 print(f"Starting Kemsinin Dubber Pro Studio locally...")
-print(f"👉 http://localhost:{PORT}")
+print(f" -> http://localhost:{PORT}")
 print("Press Ctrl+C to stop the server.")
 print(f"=======================================================\n")
 

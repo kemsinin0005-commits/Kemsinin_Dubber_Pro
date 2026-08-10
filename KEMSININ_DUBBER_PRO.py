@@ -463,7 +463,7 @@ class BatchDubberDialog(QDialog):
                 if pbar:
                     pbar.setValue(self.progress_values[i])
                     
-        global_avg = int(total / len(self.progress_values))
+        global_avg = int(total / len(self.progress_values)) if self.progress_values else 0
         self.progress_bar.setValue(global_avg)
         
         if all_done:
@@ -1381,7 +1381,7 @@ class KemsininDubberApp(QMainWindow):
             row_widgets.append(end_edit)
             
             # TEXT (QLineEdit)
-            text_edit = QLineEdit(sub["text"])
+            text_edit = QLineEdit(str(sub["text"]))
             text_edit.setObjectName("TableCellTextEdit")
             text_edit.textChanged.connect(lambda text, r=row: self.cell_text_changed(r, text))
             self.table.setCellWidget(row, 3, text_edit)
@@ -1881,7 +1881,9 @@ class KemsininDubberApp(QMainWindow):
                     })
         return subtitles
 
-    def format_srt(self, subtitles):
+    def format_srt(self, subtitles=None):
+        if subtitles is None:
+            subtitles = self.subtitles
         lines = []
         last_header = None
         for idx, sub in enumerate(subtitles):
@@ -1905,19 +1907,26 @@ class KemsininDubberApp(QMainWindow):
                 end_str = self.seconds_to_time_str(sub["end"])
                 
             lines.append(f"{start_str} --> {end_str}")
-            lines.append(sub["text"])
+            lines.append(str(sub["text"]))
             lines.append("")
         return '\n'.join(lines)
 
     def time_str_to_seconds(self, time_str):
-        time_str = time_str.replace(',', '.')
-        parts = time_str.split(':')
-        if len(parts) == 3:
-            h = float(parts[0])
-            m = float(parts[1])
-            s = float(parts[2])
-            return h * 3600 + m * 60 + s
-        return 0.0
+        try:
+            time_str = str(time_str).strip().replace(',', '.')
+            parts = time_str.split(':')
+            if len(parts) == 3:
+                h = float(parts[0])
+                m = float(parts[1])
+                s = float(parts[2])
+                return h * 3600 + m * 60 + s
+            elif len(parts) == 2:
+                m = float(parts[0])
+                s = float(parts[1])
+                return m * 60 + s
+            return float(time_str)
+        except ValueError:
+            return 0.0
 
     def seconds_to_time_str(self, secs):
         hrs = int(secs // 3600)
