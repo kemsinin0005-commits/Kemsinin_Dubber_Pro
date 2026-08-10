@@ -310,7 +310,15 @@
     <div id="modal-batch" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h2>👥 Batch Dubber — ប្រព័ន្ធបកប្រែរឿងអូតូ (Auto Translation & Dubbing)</h2>
+                <h2>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width: 20px; height: 20px; vertical-align: sub; margin-right: 6px; display: inline-block;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Batch Dubber Studio — ប្រព័ន្ធបកប្រែរឿងអូតូ (Auto Translation & Dubbing)
+                </h2>
                 <button class="modal-close-btn">&times;</button>
             </div>
             <div class="modal-body">
@@ -321,7 +329,7 @@
                     <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:36px; height:36px; color: var(--cyan);">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
                     </svg>
-                    <span style="font-weight: 700; color: #ffffff; font-size: 13px;">📁 Click Here to Choose Videos or Drag & Drop (ចុចទីនេះដើម្បីជ្រើសរើសវីដេអូ)</span>
+                    <span style="font-weight: 700; color: #ffffff; font-size: 13px;">Click Here to Choose Videos or Drag & Drop (ចុចទីនេះដើម្បីជ្រើសរើសវីដេអូ)</span>
                     <span style="font-size: 11px; color: var(--text-muted);">Supports MP4, MKV, AVI, MOV video files</span>
                 </div>
                 <input type="file" id="batch-file-input" style="display: none;" multiple accept="video/*">
@@ -333,15 +341,27 @@
                 <!-- Batch Settings Panel -->
                 <div class="batch-settings-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; margin-bottom: 5px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                     <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
-                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🗣️ Voice (សំឡេង)</label>
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width: 14px; height: 14px; shrink: 0;">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+                            </svg>
+                            Voice (សំឡេង)
+                        </label>
                         <select id="batch-voice" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
-                            <option value="female" selected>👩 Female Voice (សំឡេងស្រី)</option>
-                            <option value="male">👨 Male Voice (សំឡេងប្រុស)</option>
-                            <option value="auto">🤖 Auto Detect (ស្វ័យប្រវត្តិ)</option>
+                            <option value="female" selected>Female Voice (សំឡេងស្រី)</option>
+                            <option value="male">Male Voice (សំឡេងប្រុស)</option>
+                            <option value="auto">Auto Detect (ស្វ័យប្រវត្តិ)</option>
                         </select>
                     </div>
                     <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
-                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🎚️ Speed (ល្បឿន)</label>
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width: 14px; height: 14px; shrink: 0;">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            Speed (ល្បឿន)
+                        </label>
                         <select id="batch-speed" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
                             <option value="normal" selected>Normal (ធម្មតា)</option>
                             <option value="slow">Slow (យឺត)</option>
@@ -349,14 +369,33 @@
                         </select>
                     </div>
                     <div class="form-group" style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🤖 TTS Model (ម៉ូដែល TTS)</label>
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width: 14px; height: 14px; shrink: 0;">
+                                <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                <rect x="9" y="9" width="6" height="6"/>
+                                <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+                                <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+                                <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/>
+                                <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/>
+                            </svg>
+                            TTS Model (ម៉ូដែល TTS)
+                        </label>
                         <select id="batch-tts" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
                             <option value="kiri-edge" selected>Automatic — Kiri → Edge TTS</option>
                             <option value="gemini-tts">Gemini TTS Premium</option>
                         </select>
                     </div>
                     <div class="form-group" style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700;">🎙️ VoxCPM2 Settings</label>
+                        <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width: 14px; height: 14px; shrink: 0;">
+                                <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+                                <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+                                <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/>
+                                <line x1="17" y1="16" x2="23" y2="16"/>
+                            </svg>
+                            VoxCPM2 Settings
+                        </label>
                         <select id="batch-voxcpm" class="form-select" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 12px; outline: none; width: 100%;">
                             <option value="none" selected>Not needed (មិនចាំបាច់)</option>
                             <option value="enabled">Enabled (សកម្ម)</option>
@@ -373,7 +412,7 @@
             </div>
             <div class="modal-footer">
                 <button class="modal-btn btn-secondary modal-cancel">Cancel</button>
-                <button id="btn-process-batch" class="modal-btn btn-primary" style="background: linear-gradient(135deg, #00f2fe 0%, #00c853 100%); font-weight: bold;">🚀 Start Batch Dubbing</button>
+                <button id="btn-process-batch" class="modal-btn btn-primary" style="background: linear-gradient(135deg, #00f2fe 0%, #00c853 100%); font-weight: bold;">Start Batch Dubbing</button>
             </div>
         </div>
     </div>
