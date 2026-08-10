@@ -19,6 +19,7 @@ __pycache__/
 *.pyo
 *.pyd
 .ipynb_checkpoints
+build/
 
 # Logs
 npm-debug.log*
