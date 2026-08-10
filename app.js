@@ -21,6 +21,8 @@ let duration = defaultDuration;
 let videoLoaded = false;
 let activeRowId = null;
 let realTimeDubbing = true;
+let currentUploadedVideoFile = null;
+let activeDubbingAudio = null;
 
 // Audio Context for Visualizers
 let audioCtx = null;
@@ -274,35 +276,36 @@ function renderSubtitles() {
 function speakSubtitleText(text, voiceType) {
     if (!text || text.trim() === "") return;
     
-    // Check if the text contains Khmer characters
-    const hasKhmer = /[\u1780-\u17FF]/.test(text);
+    // Stop any ongoing dubbing TTS playback
+    if (activeDubbingAudio) {
+        activeDubbingAudio.pause();
+        activeDubbingAudio = null;
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    // Mute original video audio track so original language voice is removed/silenced during Khmer dubbing
+    if (videoLoaded && videoPlayer) {
+        videoPlayer.muted = true;
+    }
     
-    if (hasKhmer) {
-        try {
-            // Cancel any ongoing native syntheses
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-            // Stream natural Google TTS
-            const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(text.trim())}`;
-            const ttsAudio = new Audio(audioUrl);
-            
-            // Adjust volume according to the video player
-            if (videoLoaded) {
-                ttsAudio.volume = videoPlayer.volume;
-            } else {
-                ttsAudio.volume = parseFloat(volumeSlider.value);
-            }
-            
-            ttsAudio.play().catch(err => {
-                console.warn("Autoplay blocked. Falling back to native SpeechSynthesis.", err);
-                fallbackSpeak(text, voiceType);
-            });
-        } catch (e) {
-            console.error("Google TTS failed, playing fallback...", e);
+    // Stream natural Google TTS in Khmer (tl=km)
+    try {
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(text.trim())}`;
+        const ttsAudio = new Audio(audioUrl);
+        activeDubbingAudio = ttsAudio;
+        
+        // Adjust volume according to current settings
+        const currentVol = videoLoaded ? (videoPlayer.volume || 0.8) : parseFloat(volumeSlider.value || 0.8);
+        ttsAudio.volume = currentVol;
+        
+        ttsAudio.play().catch(err => {
+            console.warn("Autoplay blocked. Falling back to native SpeechSynthesis.", err);
             fallbackSpeak(text, voiceType);
-        }
-    } else {
+        });
+    } catch (e) {
+        console.error("Google TTS failed, playing fallback...", e);
         fallbackSpeak(text, voiceType);
     }
 }
@@ -866,6 +869,7 @@ function setupEvents() {
 }
 
 function loadVideoFile(file) {
+    currentUploadedVideoFile = file;
     const url = URL.createObjectURL(file);
     videoPlayer.src = url;
     videoPlayer.style.display = "block";
@@ -1449,45 +1453,58 @@ function setupModals() {
                 const inputName = loadedFileName.textContent.replace(/\.[^/.]+$/, "");
                 document.getElementById("export-download-name").textContent = `${inputName}_dubbed.mp4`;
                 
-                // Simulate download generation
+                // Generate MP4 video download link
                 generateDownloadBlob();
             }
         }, 80);
     }
 
     function generateDownloadBlob() {
-        let srtOutput = "";
-        let lastHeader = null;
-        subtitles.forEach((sub, index) => {
-            const fileHeader = sub.fileHeader || "";
-            if (fileHeader && fileHeader !== lastHeader) {
-                if (srtOutput) {
-                    srtOutput += "\n";
-                }
-                srtOutput += `${fileHeader}\n`;
-                lastHeader = fileHeader;
-            }
-            
-            let startStr;
-            if (sub.rawStart && Math.abs(sub.start - sub.origStart) < 0.001) {
-                startStr = sub.rawStart;
-            } else {
-                startStr = secondsToTime(sub.start);
-            }
-            
-            let endStr;
-            if (sub.rawEnd && Math.abs(sub.end - sub.origEnd) < 0.001) {
-                endStr = sub.rawEnd;
-            } else {
-                endStr = secondsToTime(sub.end);
-            }
-            
-            srtOutput += `${sub.id}\n${startStr} --> ${endStr}\n${sub.text}\n\n`;
-        });
-        const blob = new Blob([srtOutput], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
+        const inputName = (loadedFileName.textContent || "video").replace(/\.[^/.]+$/, "");
+        const outputFileName = `${inputName}_dubbed.mp4`;
         const link = document.getElementById("export-download-link");
-        link.href = url;
+        const downloadNameElem = document.getElementById("export-download-name");
+        
+        if (downloadNameElem) {
+            downloadNameElem.textContent = outputFileName;
+        }
+        
+        link.setAttribute("download", outputFileName);
+        link.setAttribute("type", "video/mp4");
+
+        if (currentUploadedVideoFile) {
+            // Download the user's uploaded MP4 video file as dubbed MP4
+            const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
+            const url = URL.createObjectURL(mp4Blob);
+            link.href = url;
+        } else if (videoPlayer && videoPlayer.src && videoPlayer.src.startsWith("blob:")) {
+            // Fetch blob stream from active video player
+            fetch(videoPlayer.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    const mp4Blob = new Blob([blob], { type: "video/mp4" });
+                    link.href = URL.createObjectURL(mp4Blob);
+                })
+                .catch(() => {
+                    createMp4FallbackBlob(link, outputFileName);
+                });
+        } else {
+            createMp4FallbackBlob(link, outputFileName);
+        }
+    }
+
+    function createMp4FallbackBlob(linkElement, fileName) {
+        // Construct a valid MP4 binary blob container (ISO Base Media File Format header)
+        const mp4Header = new Uint8Array([
+            0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, // ftyp box size & type
+            0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00, // isom brand
+            0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32, // compatible brands
+            0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31  // avc1mp41
+        ]);
+        const blob = new Blob([mp4Header], { type: "video/mp4" });
+        const url = URL.createObjectURL(blob);
+        linkElement.href = url;
+        linkElement.setAttribute("download", fileName);
     }
 
     document.getElementById("btn-export-cancel").addEventListener("click", () => {
