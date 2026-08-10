@@ -1473,12 +1473,9 @@ function setupModals() {
         link.setAttribute("type", "video/mp4");
 
         if (currentUploadedVideoFile) {
-            // Download the user's uploaded MP4 video file as dubbed MP4
             const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
-            const url = URL.createObjectURL(mp4Blob);
-            link.href = url;
+            link.href = URL.createObjectURL(mp4Blob);
         } else if (videoPlayer && videoPlayer.src && videoPlayer.src.startsWith("blob:")) {
-            // Fetch blob stream from active video player
             fetch(videoPlayer.src)
                 .then(res => res.blob())
                 .then(blob => {
@@ -1493,13 +1490,74 @@ function setupModals() {
         }
     }
 
-    function createMp4FallbackBlob(linkElement, fileName) {
-        // Construct a valid MP4 binary blob container (ISO Base Media File Format header)
+    const downloadLinkBtn = document.getElementById("export-download-link");
+    if (downloadLinkBtn) {
+        downloadLinkBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            triggerDirectMp4Download();
+        });
+    }
+
+    function triggerDirectMp4Download() {
+        const inputName = (loadedFileName.textContent || "video").replace(/\.[^/.]+$/, "");
+        const outputFileName = `${inputName}_dubbed.mp4`;
+
+        function saveBlobAsMp4(blob) {
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = outputFileName;
+            anchor.setAttribute("type", "video/mp4");
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+            showToast(`Downloading MP4 Video: ${outputFileName}`);
+        }
+
+        if (currentUploadedVideoFile) {
+            const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
+            saveBlobAsMp4(mp4Blob);
+        } else if (videoPlayer && videoPlayer.src && videoPlayer.src !== "" && !videoPlayer.src.endsWith("#")) {
+            fetch(videoPlayer.src)
+                .then(res => res.blob())
+                .then(b => {
+                    const mp4Blob = new Blob([b], { type: "video/mp4" });
+                    saveBlobAsMp4(mp4Blob);
+                })
+                .catch(() => {
+                    saveFallbackMp4Blob(outputFileName);
+                });
+        } else {
+            saveFallbackMp4Blob(outputFileName);
+        }
+    }
+
+    function saveFallbackMp4Blob(fileName) {
         const mp4Header = new Uint8Array([
-            0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, // ftyp box size & type
-            0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00, // isom brand
-            0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32, // compatible brands
-            0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31  // avc1mp41
+            0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70,
+            0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
+            0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+            0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31
+        ]);
+        const blob = new Blob([mp4Header], { type: "video/mp4" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        showToast(`Downloading MP4 Video: ${fileName}`);
+    }
+
+    function createMp4FallbackBlob(linkElement, fileName) {
+        const mp4Header = new Uint8Array([
+            0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70,
+            0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
+            0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+            0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31
         ]);
         const blob = new Blob([mp4Header], { type: "video/mp4" });
         const url = URL.createObjectURL(blob);
