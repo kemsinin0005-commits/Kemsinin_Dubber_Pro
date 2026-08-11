@@ -1540,59 +1540,113 @@ function setupModals() {
     }
 
     async function buildRenderedDubbedVideo() {
-        try {
-            const audioBuffers = [];
-            const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            for (let sub of subtitles) {
-                if (!sub.text || sub.text.trim() === "") continue;
-                const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(sub.text.trim())}`;
-                try {
-                    const response = await fetch(ttsUrl);
-                    if (response.ok) {
-                        const arrayBuf = await response.arrayBuffer();
-                        const audioBuf = await tempCtx.decodeAudioData(arrayBuf);
-                        audioBuffers.push({
-                            start: sub.start,
-                            buffer: audioBuf
-                        });
-                    }
-                } catch (err) {
-                    console.warn("TTS chunk fetch skipped:", sub.text, err);
-                }
-            }
-
-            if (audioBuffers.length > 0) {
-                const maxEndTime = Math.max(duration || 30, ...subtitles.map(s => s.end));
-                const sampleRate = tempCtx.sampleRate || 44100;
-                const offlineCtx = new OfflineAudioContext(2, Math.ceil(maxEndTime * sampleRate), sampleRate);
-
-                audioBuffers.forEach(item => {
-                    const source = offlineCtx.createBufferSource();
-                    source.buffer = item.buffer;
-                    source.connect(offlineCtx.destination);
-                    source.start(item.start);
-                });
-
-                const renderedAudioBuffer = await offlineCtx.startRendering();
-                const khmerWavBlob = audioBufferToWavBlob(renderedAudioBuffer);
-
-                // Silence original video audio track
+        return new Promise(async (resolve) => {
+            try {
+                // Silence original video audio track completely
                 if (videoLoaded && videoPlayer) {
                     videoPlayer.muted = true;
                 }
 
-                // Combine original video stream with synthesized Khmer TTS audio track
-                const baseVideoFile = currentUploadedVideoFile || (videoPlayer && videoPlayer.src ? await (await fetch(videoPlayer.src)).blob() : null);
-                if (baseVideoFile) {
-                    currentDubbedVideoBlob = new Blob([baseVideoFile, khmerWavBlob], { type: "video/mp4" });
-                } else {
-                    currentDubbedVideoBlob = khmerWavBlob;
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const destinationNode = audioCtx.createMediaStreamDestination();
+
+                // 1. Fetch & decode Khmer TTS audio buffers for all subtitle segments
+                const audioBuffers = [];
+                for (let sub of subtitles) {
+                    if (!sub.text || sub.text.trim() === "") continue;
+                    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(sub.text.trim())}`;
+                    try {
+                        const res = await fetch(ttsUrl);
+                        if (res.ok) {
+                            const ab = await res.arrayBuffer();
+                            const audioBuf = await audioCtx.decodeAudioData(ab);
+                            audioBuffers.push({
+                                start: sub.start,
+                                buffer: audioBuf
+                            });
+                        }
+                    } catch (err) {
+                        console.warn("TTS chunk skipped:", sub.text, err);
+                    }
                 }
+
+                // 2. Schedule Khmer TTS audio buffers onto destinationNode
+                audioBuffers.forEach(item => {
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = item.buffer;
+                    source.connect(destinationNode);
+                    source.start(audioCtx.currentTime + item.start);
+                });
+
+                // 3. Extract video stream from video element or visualizer canvas
+                let videoStream = null;
+                if (videoLoaded && videoPlayer && typeof videoPlayer.captureStream === "function") {
+                    try {
+                        videoStream = videoPlayer.captureStream();
+                    } catch (e) {
+                        if (visualizerCanvas && typeof visualizerCanvas.captureStream === "function") {
+                            videoStream = visualizerCanvas.captureStream(30);
+                        }
+                    }
+                } else if (visualizerCanvas && typeof visualizerCanvas.captureStream === "function") {
+                    videoStream = visualizerCanvas.captureStream(30);
+                }
+
+                const videoTracks = videoStream ? videoStream.getVideoTracks() : [];
+                const audioTracks = destinationNode.stream.getAudioTracks();
+
+                if (videoTracks.length > 0 && typeof window.MediaRecorder === "function") {
+                    const combinedStream = new MediaStream([...videoTracks, ...audioTracks]);
+                    let mimeType = "video/mp4";
+                    if (!MediaRecorder.isTypeSupported("video/mp4")) {
+                        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+                            mimeType = "video/webm;codecs=vp9,opus";
+                        } else if (MediaRecorder.isTypeSupported("video/webm")) {
+                            mimeType = "video/webm";
+                        }
+                    }
+
+                    const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : {});
+                    const chunks = [];
+
+                    recorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) {
+                            chunks.push(e.data);
+                        }
+                    };
+
+                    recorder.onstop = () => {
+                        currentDubbedVideoBlob = new Blob(chunks, { type: "video/mp4" });
+                        resolve(currentDubbedVideoBlob);
+                    };
+
+                    recorder.start(100);
+                    setTimeout(() => {
+                        if (recorder.state === "recording") {
+                            recorder.stop();
+                        }
+                    }, Math.min(10000, Math.max(3000, (duration || 10) * 1000)));
+                } else {
+                    const maxEndTime = Math.max(duration || 30, ...subtitles.map(s => s.end));
+                    const sampleRate = audioCtx.sampleRate || 44100;
+                    const offlineCtx = new OfflineAudioContext(2, Math.ceil(maxEndTime * sampleRate), sampleRate);
+
+                    audioBuffers.forEach(item => {
+                        const source = offlineCtx.createBufferSource();
+                        source.buffer = item.buffer;
+                        source.connect(offlineCtx.destination);
+                        source.start(item.start);
+                    });
+
+                    const renderedBuf = await offlineCtx.startRendering();
+                    currentDubbedVideoBlob = audioBufferToWavBlob(renderedBuf);
+                    resolve(currentDubbedVideoBlob);
+                }
+            } catch (e) {
+                console.error("Khmer dubbing audio rendering failed:", e);
+                resolve(null);
             }
-        } catch (e) {
-            console.error("Khmer dubbing audio rendering failed:", e);
-        }
+        });
     }
 
     function audioBufferToWavBlob(buffer) {
