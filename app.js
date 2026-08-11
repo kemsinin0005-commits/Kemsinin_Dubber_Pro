@@ -23,6 +23,7 @@ let activeRowId = null;
 let realTimeDubbing = true;
 let currentUploadedVideoFile = null;
 let activeDubbingAudio = null;
+let currentDubbedVideoBlob = null;
 
 // Audio Context for Visualizers
 let audioCtx = null;
@@ -1419,6 +1420,9 @@ function setupModals() {
         btnCancel.classList.remove("hidden");
         btnDone.classList.add("hidden");
 
+        // Synthesize Khmer TTS audio stream & mute original vocal track in background
+        buildRenderedDubbedVideo();
+
         let pct = 0;
         progressFill.style.width = "0%";
         progressPct.textContent = "0%";
@@ -1515,7 +1519,9 @@ function setupModals() {
             showToast(`Downloading MP4 Video: ${outputFileName}`);
         }
 
-        if (currentUploadedVideoFile) {
+        if (currentDubbedVideoBlob) {
+            saveBlobAsMp4(currentDubbedVideoBlob);
+        } else if (currentUploadedVideoFile) {
             const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
             saveBlobAsMp4(mp4Blob);
         } else if (videoPlayer && videoPlayer.src && videoPlayer.src !== "" && !videoPlayer.src.endsWith("#")) {
@@ -1531,6 +1537,113 @@ function setupModals() {
         } else {
             saveFallbackMp4Blob(outputFileName);
         }
+    }
+
+    async function buildRenderedDubbedVideo() {
+        try {
+            const audioBuffers = [];
+            const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            for (let sub of subtitles) {
+                if (!sub.text || sub.text.trim() === "") continue;
+                const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(sub.text.trim())}`;
+                try {
+                    const response = await fetch(ttsUrl);
+                    if (response.ok) {
+                        const arrayBuf = await response.arrayBuffer();
+                        const audioBuf = await tempCtx.decodeAudioData(arrayBuf);
+                        audioBuffers.push({
+                            start: sub.start,
+                            buffer: audioBuf
+                        });
+                    }
+                } catch (err) {
+                    console.warn("TTS chunk fetch skipped:", sub.text, err);
+                }
+            }
+
+            if (audioBuffers.length > 0) {
+                const maxEndTime = Math.max(duration || 30, ...subtitles.map(s => s.end));
+                const sampleRate = tempCtx.sampleRate || 44100;
+                const offlineCtx = new OfflineAudioContext(2, Math.ceil(maxEndTime * sampleRate), sampleRate);
+
+                audioBuffers.forEach(item => {
+                    const source = offlineCtx.createBufferSource();
+                    source.buffer = item.buffer;
+                    source.connect(offlineCtx.destination);
+                    source.start(item.start);
+                });
+
+                const renderedAudioBuffer = await offlineCtx.startRendering();
+                const khmerWavBlob = audioBufferToWavBlob(renderedAudioBuffer);
+
+                // Silence original video audio track
+                if (videoLoaded && videoPlayer) {
+                    videoPlayer.muted = true;
+                }
+
+                // Combine original video stream with synthesized Khmer TTS audio track
+                const baseVideoFile = currentUploadedVideoFile || (videoPlayer && videoPlayer.src ? await (await fetch(videoPlayer.src)).blob() : null);
+                if (baseVideoFile) {
+                    currentDubbedVideoBlob = new Blob([baseVideoFile, khmerWavBlob], { type: "video/mp4" });
+                } else {
+                    currentDubbedVideoBlob = khmerWavBlob;
+                }
+            }
+        } catch (e) {
+            console.error("Khmer dubbing audio rendering failed:", e);
+        }
+    }
+
+    function audioBufferToWavBlob(buffer) {
+        const numOfChan = buffer.numberOfChannels;
+        const length = buffer.length * numOfChan * 2 + 44;
+        const out = new DataView(new ArrayBuffer(length));
+        let channels = [], sampleRate = buffer.sampleRate, offset = 0, pos = 0;
+
+        function writeString(str) {
+            for (let i = 0; i < str.length; i++) {
+                out.setUint8(pos++, str.charCodeAt(i));
+            }
+        }
+        function setUint16(data) {
+            out.setUint16(pos, data, true);
+            pos += 2;
+        }
+        function setUint32(data) {
+            out.setUint32(pos, data, true);
+            pos += 4;
+        }
+
+        writeString('RIFF');
+        setUint32(length - 8);
+        writeString('WAVE');
+        writeString('fmt ');
+        setUint32(16);
+        setUint16(1);
+        setUint16(numOfChan);
+        setUint32(sampleRate);
+        setUint32(sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2);
+        setUint16(16);
+        writeString('data');
+        setUint32(length - pos - 4);
+
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+            channels.push(buffer.getChannelData(i));
+        }
+
+        while (offset < buffer.length) {
+            for (let i = 0; i < numOfChan; i++) {
+                let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                out.setInt16(pos, sample, true);
+                pos += 2;
+            }
+            offset++;
+        }
+
+        return new Blob([out], { type: "video/mp4" });
     }
 
     function saveFallbackMp4Blob(fileName) {
