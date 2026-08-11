@@ -1212,12 +1212,18 @@ class KemsininDubberApp(QMainWindow):
         self.volume_slider.setFixedWidth(70)
         self.volume_slider.valueChanged.connect(self.action_volume_changed)
         
+        self.chk_loop = QCheckBox("🔁 Loop")
+        self.chk_loop.setStyleSheet("QCheckBox { color: #8e95b3; font-weight: bold; font-size: 11px; } QCheckBox::indicator:checked { background-color: #00f2fe; }")
+        self.chk_loop.setChecked(False)
+        self.chk_loop.toggled.connect(self.action_toggle_loop)
+
         self.cassette = CassetteWidget()
         
         controls_layout.addWidget(self.btn_play)
         controls_layout.addWidget(self.btn_stop)
         controls_layout.addWidget(self.btn_volume)
         controls_layout.addWidget(self.volume_slider)
+        controls_layout.addWidget(self.chk_loop)
         controls_layout.addStretch()
         controls_layout.addWidget(self.cassette)
         preview_layout.addLayout(controls_layout)
@@ -1478,11 +1484,20 @@ class KemsininDubberApp(QMainWindow):
         if self.video_loaded:
             self.media_player.setVolume(value)
 
+    def action_toggle_loop(self, checked):
+        state_str = "ON" if checked else "OFF"
+        self.show_toast(f"Video Loop: {state_str}")
+
     def playback_tick(self):
         if self.is_playing:
             self.current_time += 0.030
             if self.current_time >= self.total_duration:
-                self.current_time = 0.0
+                if hasattr(self, 'chk_loop') and not self.chk_loop.isChecked():
+                    self.current_time = self.total_duration
+                    self.action_pause()
+                    self.show_toast("🔁 Playback Finished. Click Play or Seek to restart.")
+                else:
+                    self.current_time = 0.0
                 
             self.update_timeline_ui()
             self.check_subtitle_highlights()

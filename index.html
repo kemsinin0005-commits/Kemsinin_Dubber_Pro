@@ -73,6 +73,16 @@
                         </div>
                         <canvas id="visualizer-canvas"></canvas>
                         <video id="video-player"></video>
+                        <!-- Replay Overlay -->
+                        <div id="replay-overlay" class="replay-overlay hidden">
+                            <button id="btn-replay-overlay" class="replay-btn" title="Replay Video">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="40" height="40">
+                                    <polyline points="1 4 1 10 7 10"/>
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                </svg>
+                                <span>🔁 REPLAY VIDEO</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Audio Spectrum -->
@@ -119,6 +129,15 @@
                                 </svg>
                             </button>
                             <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.05" value="0.8">
+                            
+                            <!-- Loop Toggle Switch -->
+                            <div class="loop-toggle-container" title="Toggle Video Looping (ON = Auto Loop, OFF = Play to End with Replay)">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-loop-video">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="loop-label">🔁 Loop</span>
+                            </div>
                         </div>
                         <div id="cassette-tape" class="cassette-widget">
                             <div class="cassette-reel">

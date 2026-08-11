@@ -49,6 +49,9 @@ const volumeSlider = document.getElementById("volume-slider");
 const cassetteTape = document.getElementById("cassette-tape");
 const subtitlesTbody = document.getElementById("subtitles-tbody");
 const loadedFileName = document.getElementById("loaded-file-name");
+const toggleLoopVideo = document.getElementById("toggle-loop-video");
+const replayOverlay = document.getElementById("replay-overlay");
+const btnReplayOverlay = document.getElementById("btn-replay-overlay");
 
 // Modals
 const modalSettings = document.getElementById("modal-settings");
@@ -375,6 +378,7 @@ function seekTo(seconds) {
     timelineSlider.value = seconds;
     currentTimeDisplay.textContent = secondsToTime(seconds);
     updateSliderBackground();
+    if (replayOverlay) replayOverlay.classList.add("hidden");
     
     if (videoLoaded) {
         videoPlayer.currentTime = seconds;
@@ -444,12 +448,21 @@ function updateLoop(timestamp) {
             // Auto pause if reached end
             if (videoPlayer.ended) {
                 pausePlayback();
+                if (toggleLoopVideo && !toggleLoopVideo.checked) {
+                    if (replayOverlay) replayOverlay.classList.remove("hidden");
+                }
             }
         } else {
             // Simulated clock tick
             currentTime += delta;
             if (currentTime >= duration) {
-                currentTime = 0;
+                if (toggleLoopVideo && !toggleLoopVideo.checked) {
+                    currentTime = duration;
+                    pausePlayback();
+                    if (replayOverlay) replayOverlay.classList.remove("hidden");
+                } else {
+                    currentTime = 0;
+                }
             }
             timelineSlider.value = currentTime;
             currentTimeDisplay.textContent = secondsToTime(currentTime);
@@ -664,6 +677,7 @@ function startPlayback() {
     playIcon.classList.add("hidden");
     pauseIcon.classList.remove("hidden");
     cassetteTape.classList.add("playing");
+    if (replayOverlay) replayOverlay.classList.add("hidden");
     
     if (videoLoaded) {
         // Resume Audio Context if needed due to browser policies
@@ -740,6 +754,39 @@ function setupEvents() {
             volMuteIcon.classList.remove("hidden");
         }
         volumeSlider.style.setProperty('--vol-pct', `${volumeSlider.value * 100}%`);
+    });
+    
+    // Loop toggle switch setup
+    if (toggleLoopVideo) {
+        // Set initial video loop state from toggle checkbox
+        videoPlayer.loop = toggleLoopVideo.checked;
+        
+        toggleLoopVideo.addEventListener("change", () => {
+            videoPlayer.loop = toggleLoopVideo.checked;
+            if (toggleLoopVideo.checked) {
+                if (replayOverlay) replayOverlay.classList.add("hidden");
+                showToast("Video Loop: ON (Auto Replay)");
+            } else {
+                showToast("Video Loop: OFF (Play to End mode)");
+            }
+        });
+    }
+
+    // Replay overlay button setup
+    if (btnReplayOverlay) {
+        btnReplayOverlay.addEventListener("click", () => {
+            if (replayOverlay) replayOverlay.classList.add("hidden");
+            seekTo(0);
+            startPlayback();
+        });
+    }
+
+    // Video ended event handler
+    videoPlayer.addEventListener("ended", () => {
+        if (toggleLoopVideo && !toggleLoopVideo.checked) {
+            pausePlayback();
+            if (replayOverlay) replayOverlay.classList.remove("hidden");
+        }
     });
     
     // Drag & Drop / Upload Video Files
@@ -1476,7 +1523,9 @@ function setupModals() {
         link.setAttribute("download", outputFileName);
         link.setAttribute("type", "video/mp4");
 
-        if (currentUploadedVideoFile) {
+        if (currentDubbedVideoBlob) {
+            link.href = URL.createObjectURL(currentDubbedVideoBlob);
+        } else if (currentUploadedVideoFile) {
             const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
             link.href = URL.createObjectURL(mp4Blob);
         } else if (videoPlayer && videoPlayer.src && videoPlayer.src.startsWith("blob:")) {
@@ -1516,7 +1565,7 @@ function setupModals() {
             anchor.click();
             document.body.removeChild(anchor);
             setTimeout(() => URL.revokeObjectURL(url), 2000);
-            showToast(`Downloading MP4 Video: ${outputFileName}`);
+            showToast(`Downloading Khmer Dubbed Video: ${outputFileName}`);
         }
 
         if (currentDubbedVideoBlob) {
@@ -1548,8 +1597,7 @@ function setupModals() {
                 }
 
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const destinationNode = audioCtx.createMediaStreamDestination();
-
+                
                 // 1. Fetch & decode Khmer TTS audio buffers for all subtitle segments
                 const audioBuffers = [];
                 for (let sub of subtitles) {
@@ -1570,63 +1618,7 @@ function setupModals() {
                     }
                 }
 
-                // 2. Schedule Khmer TTS audio buffers onto destinationNode
-                audioBuffers.forEach(item => {
-                    const source = audioCtx.createBufferSource();
-                    source.buffer = item.buffer;
-                    source.connect(destinationNode);
-                    source.start(audioCtx.currentTime + item.start);
-                });
-
-                // 3. Extract video stream from video element or visualizer canvas
-                let videoStream = null;
-                if (videoLoaded && videoPlayer && typeof videoPlayer.captureStream === "function") {
-                    try {
-                        videoStream = videoPlayer.captureStream();
-                    } catch (e) {
-                        if (visualizerCanvas && typeof visualizerCanvas.captureStream === "function") {
-                            videoStream = visualizerCanvas.captureStream(30);
-                        }
-                    }
-                } else if (visualizerCanvas && typeof visualizerCanvas.captureStream === "function") {
-                    videoStream = visualizerCanvas.captureStream(30);
-                }
-
-                const videoTracks = videoStream ? videoStream.getVideoTracks() : [];
-                const audioTracks = destinationNode.stream.getAudioTracks();
-
-                if (videoTracks.length > 0 && typeof window.MediaRecorder === "function") {
-                    const combinedStream = new MediaStream([...videoTracks, ...audioTracks]);
-                    let mimeType = "video/mp4";
-                    if (!MediaRecorder.isTypeSupported("video/mp4")) {
-                        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
-                            mimeType = "video/webm;codecs=vp9,opus";
-                        } else if (MediaRecorder.isTypeSupported("video/webm")) {
-                            mimeType = "video/webm";
-                        }
-                    }
-
-                    const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : {});
-                    const chunks = [];
-
-                    recorder.ondataavailable = (e) => {
-                        if (e.data && e.data.size > 0) {
-                            chunks.push(e.data);
-                        }
-                    };
-
-                    recorder.onstop = () => {
-                        currentDubbedVideoBlob = new Blob(chunks, { type: "video/mp4" });
-                        resolve(currentDubbedVideoBlob);
-                    };
-
-                    recorder.start(100);
-                    setTimeout(() => {
-                        if (recorder.state === "recording") {
-                            recorder.stop();
-                        }
-                    }, Math.min(10000, Math.max(3000, (duration || 10) * 1000)));
-                } else {
+                if (audioBuffers.length > 0) {
                     const maxEndTime = Math.max(duration || 30, ...subtitles.map(s => s.end));
                     const sampleRate = audioCtx.sampleRate || 44100;
                     const offlineCtx = new OfflineAudioContext(2, Math.ceil(maxEndTime * sampleRate), sampleRate);
@@ -1638,9 +1630,19 @@ function setupModals() {
                         source.start(item.start);
                     });
 
-                    const renderedBuf = await offlineCtx.startRendering();
-                    currentDubbedVideoBlob = audioBufferToWavBlob(renderedBuf);
+                    const renderedAudioBuffer = await offlineCtx.startRendering();
+                    const khmerWavBlob = audioBufferToWavBlob(renderedAudioBuffer);
+
+                    // Assign purely synthesized Khmer TTS voiceover audio blob
+                    currentDubbedVideoBlob = khmerWavBlob;
+
+                    const link = document.getElementById("export-download-link");
+                    if (link) {
+                        link.href = URL.createObjectURL(currentDubbedVideoBlob);
+                    }
                     resolve(currentDubbedVideoBlob);
+                } else {
+                    resolve(null);
                 }
             } catch (e) {
                 console.error("Khmer dubbing audio rendering failed:", e);
