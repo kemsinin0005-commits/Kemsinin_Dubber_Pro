@@ -951,13 +951,13 @@ class ExportProgressDialog(QDialog):
         self.pbar.setValue(self.progress_val)
         
         if self.progress_val < 30:
-            self.status_lbl.setText("Synthesizing AI Dubbing Voice tracks (Extracting audio map)...")
+            self.status_lbl.setText("Synthesizing Khmer TTS Dubbing Voice tracks (Khmer Voice)...")
         elif self.progress_val < 65:
-            self.status_lbl.setText("Attenuating source vocals & consolidating sound FX layers...")
+            self.status_lbl.setText("Muting original vocal track & embedding Khmer voiceover layers...")
         elif self.progress_val < 90:
-            self.status_lbl.setText("Stitching AI voices and backing tracks inside source container...")
+            self.status_lbl.setText("Stitching Khmer AI voices into dubbed video container (MP4)...")
         elif self.progress_val < 100:
-            self.status_lbl.setText("Finalizing video encoding block pipelines...")
+            self.status_lbl.setText("Finalizing dubbed MP4 video render pipeline...")
         else:
             self.timer.stop()
             self.status_lbl.setText("Render Pipeline Complete! Final video package compiled successfully.")

@@ -1434,13 +1434,13 @@ function setupModals() {
             progressPct.textContent = `${pct}%`;
 
             if (pct < 30) {
-                statusText.textContent = "Synthesizing AI Dubbing Voice (Piseth Male)...";
+                statusText.textContent = "Synthesizing Khmer TTS Dubbing Voice (Piseth / Sophea)...";
             } else if (pct < 65) {
-                statusText.textContent = "Attenuating original vocals & extracting sound FX layers...";
+                statusText.textContent = "Muting original vocal track & embedding Khmer voiceover layers...";
             } else if (pct < 90) {
-                statusText.textContent = "Merging AI voices and background scores into video container (MP4)...";
+                statusText.textContent = "Merging Khmer AI voices into dubbed video container (MP4)...";
             } else if (pct < 100) {
-                statusText.textContent = "Compressing stream & finalizing exports...";
+                statusText.textContent = "Compressing video stream & finalizing MP4 exports...";
             } else {
                 // Done
                 clearInterval(exportTimer);
