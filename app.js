@@ -607,10 +607,10 @@ function drawGlowRing(ctx, x, y, r, active) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = active ? "rgba(0, 255, 135, 0.2)" : "rgba(255, 255, 255, 0.1)";
-    ctx.strokeStyle = active ? "var(--emerald)" : "var(--text-muted)";
+    ctx.strokeStyle = active ? "#00ff87" : "#8e95b3";
     ctx.lineWidth = 2;
     ctx.shadowBlur = active ? 10 : 0;
-    ctx.shadowColor = "var(--emerald)";
+    ctx.shadowColor = "#00ff87";
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -655,9 +655,9 @@ function drawSpectrum() {
     
     // Draw spectrum bars
     const gradient = spectCtx.createLinearGradient(0, h, 0, 0);
-    gradient.addColorStop(0, "var(--cyan)");
-    gradient.addColorStop(0.5, "var(--purple)");
-    gradient.addColorStop(1, "var(--magenta)");
+    gradient.addColorStop(0, "#00f2fe");
+    gradient.addColorStop(0.5, "#8a2be2");
+    gradient.addColorStop(1, "#fd267a");
     
     spectCtx.fillStyle = gradient;
     
