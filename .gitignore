@@ -20,6 +20,10 @@ __pycache__/
 *.pyd
 .ipynb_checkpoints
 build/
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
 
 # Logs
 npm-debug.log*

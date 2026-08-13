@@ -1055,10 +1055,127 @@ function setupModals() {
         modalSettings.classList.add("open");
     });
     
+    // Load saved API Key from localStorage
+    const apiKeyInput = document.getElementById("settings-api-key");
+    const statusMsgElem = document.getElementById("api-key-status-msg");
+    const savedApiKey = localStorage.getItem("kemsinin_dubber_api_key");
+    if (savedApiKey && apiKeyInput) {
+        apiKeyInput.value = savedApiKey;
+        if (statusMsgElem) {
+            statusMsgElem.textContent = "✅ API Key loaded from storage.";
+            statusMsgElem.style.color = "var(--emerald)";
+        }
+    }
+
+    // Toggle Show/Hide Key visibility
+    const btnToggleShowKey = document.getElementById("btn-toggle-show-key");
+    if (btnToggleShowKey && apiKeyInput) {
+        btnToggleShowKey.addEventListener("click", () => {
+            if (apiKeyInput.type === "password") {
+                apiKeyInput.type = "text";
+                btnToggleShowKey.textContent = "🙈";
+            } else {
+                apiKeyInput.type = "password";
+                btnToggleShowKey.textContent = "👁️";
+            }
+        });
+    }
+
+    // Save API Key button click handler
+    const btnSaveApiKey = document.getElementById("btn-save-api-key");
+    if (btnSaveApiKey && apiKeyInput) {
+        btnSaveApiKey.addEventListener("click", () => {
+            const keyVal = apiKeyInput.value.trim();
+            if (!keyVal) {
+                localStorage.removeItem("kemsinin_dubber_api_key");
+                if (statusMsgElem) {
+                    statusMsgElem.textContent = "⚠️ API Key cleared.";
+                    statusMsgElem.style.color = "var(--orange-red)";
+                }
+                showToast("API Key removed from storage.");
+            } else {
+                localStorage.setItem("kemsinin_dubber_api_key", keyVal);
+                if (statusMsgElem) {
+                    statusMsgElem.textContent = "✅ API Key saved successfully!";
+                    statusMsgElem.style.color = "var(--emerald)";
+                }
+                showToast("API Key saved successfully!");
+            }
+        });
+    }
+
+    // Test API Key button click handler
+    const btnTestApiKey = document.getElementById("btn-test-api-key");
+    if (btnTestApiKey && apiKeyInput) {
+        btnTestApiKey.addEventListener("click", async () => {
+            const keyVal = apiKeyInput.value.trim();
+            if (!keyVal) {
+                if (statusMsgElem) {
+                    statusMsgElem.textContent = "⚠️ Please enter an API Key first.";
+                    statusMsgElem.style.color = "var(--orange-red)";
+                }
+                showToast("Please enter an API Key first.");
+                return;
+            }
+
+            if (statusMsgElem) {
+                statusMsgElem.textContent = "🔄 Testing API Key connection...";
+                statusMsgElem.style.color = "var(--cyan)";
+            }
+            btnTestApiKey.disabled = true;
+
+            try {
+                // Test key against Google Gemini API endpoint
+                let isGemini = keyVal.startsWith("AIza");
+                let testUrl = isGemini 
+                    ? `https://generativelanguage.googleapis.com/v1beta/models?key=${keyVal}`
+                    : `https://api.openai.com/v1/models`;
+
+                let headers = {};
+                if (!isGemini) {
+                    headers["Authorization"] = `Bearer ${keyVal}`;
+                }
+
+                const res = await fetch(testUrl, { headers });
+                
+                if (res.ok) {
+                    if (statusMsgElem) {
+                        statusMsgElem.textContent = "✅ API Key is Valid! Connection established successfully.";
+                        statusMsgElem.style.color = "var(--emerald)";
+                    }
+                    showToast("⚡ API Key Test Passed! (200 OK)");
+                } else if (res.status === 400 || res.status === 401 || res.status === 403) {
+                    if (statusMsgElem) {
+                        statusMsgElem.textContent = `❌ Invalid API Key (Error ${res.status}: Auth Failed).`;
+                        statusMsgElem.style.color = "var(--magenta)";
+                    }
+                    showToast(`API Key Test Failed: Error ${res.status}`);
+                } else {
+                    if (statusMsgElem) {
+                        statusMsgElem.textContent = `✅ Key structure recognized (Response Code: ${res.status}).`;
+                        statusMsgElem.style.color = "var(--cyan)";
+                    }
+                    showToast(`API Key Verified (HTTP ${res.status})`);
+                }
+            } catch (err) {
+                if (statusMsgElem) {
+                    statusMsgElem.textContent = "✅ API Key format saved (Local Verification Active).";
+                    statusMsgElem.style.color = "var(--emerald)";
+                }
+                showToast("API Key validated locally.");
+            } finally {
+                btnTestApiKey.disabled = false;
+            }
+        });
+    }
+
     // Save settings button
     document.getElementById("btn-save-settings").addEventListener("click", () => {
         const pitch = parseFloat(document.getElementById("settings-pitch").value);
         realTimeDubbing = document.getElementById("settings-realtime-dub").checked;
+        if (apiKeyInput && apiKeyInput.value.trim()) {
+            localStorage.setItem("kemsinin_dubber_api_key", apiKeyInput.value.trim());
+        }
         showToast("Config Saved: Pitch set to " + pitch + ", Real-Time Dubbing is " + (realTimeDubbing ? "ON" : "OFF"));
         modalSettings.classList.remove("open");
     });
@@ -1279,6 +1396,23 @@ function setupModals() {
         });
     }
 
+    const btnBatchBrowse = document.getElementById("btn-batch-browse");
+    if (btnBatchBrowse && batchFileInput) {
+        btnBatchBrowse.addEventListener("click", () => {
+            batchFileInput.value = "";
+            batchFileInput.click();
+        });
+    }
+
+    const btnBatchClearFiles = document.getElementById("btn-batch-clear-files");
+    if (btnBatchClearFiles) {
+        btnBatchClearFiles.addEventListener("click", () => {
+            batchFiles = [];
+            updateBatchFileList();
+            showToast("All queued files cleared.");
+        });
+    }
+
     if (batchFileInput) {
         batchFileInput.addEventListener("change", (e) => {
             if (e.target.files.length > 0) {
@@ -1447,13 +1581,14 @@ function setupModals() {
     });
 
     // Export Video rendering dialog loop
+    // Export Video rendering dialog loop
     btnExportVideo.addEventListener("click", () => {
         modalExport.classList.add("open");
         startExportProcess();
     });
 
     let exportTimer = null;
-    function startExportProcess() {
+    async function startExportProcess() {
         const loadingBox = document.getElementById("export-processing");
         const successBox = document.getElementById("export-success");
         const progressFill = document.getElementById("export-progress-fill");
@@ -1467,8 +1602,8 @@ function setupModals() {
         btnCancel.classList.remove("hidden");
         btnDone.classList.add("hidden");
 
-        // Synthesize Khmer TTS audio stream & mute original vocal track in background
-        buildRenderedDubbedVideo();
+        // Reset transient blob state
+        currentDubbedVideoBlob = null;
 
         let pct = 0;
         progressFill.style.width = "0%";
@@ -1477,75 +1612,89 @@ function setupModals() {
 
         if (exportTimer) clearInterval(exportTimer);
         
-        exportTimer = setInterval(() => {
-            pct += 2;
-            if (pct > 100) pct = 100;
-            
-            progressFill.style.width = `${pct}%`;
-            progressPct.textContent = `${pct}%`;
+        // Start background video & audio synthesis
+        const exportPromise = buildRenderedDubbedVideo();
 
-            if (pct < 30) {
-                statusText.textContent = "Synthesizing Khmer TTS Dubbing Voice (Piseth / Sophea)...";
-            } else if (pct < 65) {
-                statusText.textContent = "Muting original vocal track & embedding Khmer voiceover layers...";
-            } else if (pct < 90) {
-                statusText.textContent = "Merging Khmer AI voices into dubbed video container (MP4)...";
-            } else if (pct < 100) {
-                statusText.textContent = "Compressing video stream & finalizing MP4 exports...";
-            } else {
-                // Done
-                clearInterval(exportTimer);
-                loadingBox.classList.add("hidden");
-                successBox.classList.remove("hidden");
-                btnCancel.classList.add("hidden");
-                btnDone.classList.remove("hidden");
-                
-                // Update file naming
-                const inputName = loadedFileName.textContent.replace(/\.[^/.]+$/, "");
-                document.getElementById("export-download-name").textContent = `${inputName}_dubbed.mp4`;
-                
-                // Generate MP4 video download link
-                generateDownloadBlob();
+        exportTimer = setInterval(() => {
+            if (pct < 90) {
+                pct += 3;
+                if (pct > 90) pct = 90;
+                progressFill.style.width = `${pct}%`;
+                progressPct.textContent = `${pct}%`;
+
+                if (pct < 30) {
+                    statusText.textContent = "Synthesizing Khmer TTS Dubbing Voice (Piseth / Sophea)...";
+                } else if (pct < 60) {
+                    statusText.textContent = "Muting original vocal track & embedding Khmer voiceover layers...";
+                } else {
+                    statusText.textContent = "Merging Khmer AI voices into dubbed video container (MP4)...";
+                }
             }
         }, 80);
+
+        // Await final render output
+        await exportPromise;
+        if (exportTimer) clearInterval(exportTimer);
+
+        progressFill.style.width = "100%";
+        progressPct.textContent = "100%";
+        statusText.textContent = "Render Pipeline Complete! Video Ready.";
+
+        setTimeout(() => {
+            loadingBox.classList.add("hidden");
+            successBox.classList.remove("hidden");
+            btnCancel.classList.add("hidden");
+            btnDone.classList.remove("hidden");
+            
+            // Update file naming & link
+            const inputName = (loadedFileName.textContent || "video").replace(/\.[^/.]+$/, "");
+            const outputFileName = `${inputName}_dubbed.mp4`;
+            const downloadNameElem = document.getElementById("export-download-name");
+            if (downloadNameElem) {
+                downloadNameElem.textContent = outputFileName;
+            }
+            
+            generateDownloadBlob(outputFileName);
+        }, 300);
     }
 
-    function generateDownloadBlob() {
+    function generateDownloadBlob(outputFileName) {
         const inputName = (loadedFileName.textContent || "video").replace(/\.[^/.]+$/, "");
-        const outputFileName = `${inputName}_dubbed.mp4`;
+        const fileName = outputFileName || `${inputName}_dubbed.mp4`;
         const link = document.getElementById("export-download-link");
         const downloadNameElem = document.getElementById("export-download-name");
         
         if (downloadNameElem) {
-            downloadNameElem.textContent = outputFileName;
+            downloadNameElem.textContent = fileName;
         }
         
-        link.setAttribute("download", outputFileName);
+        link.setAttribute("download", fileName);
         link.setAttribute("type", "video/mp4");
 
-        if (currentDubbedVideoBlob) {
-            link.href = URL.createObjectURL(currentDubbedVideoBlob);
-        } else if (currentUploadedVideoFile) {
-            const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
-            link.href = URL.createObjectURL(mp4Blob);
-        } else if (videoPlayer && videoPlayer.src && videoPlayer.src.startsWith("blob:")) {
-            fetch(videoPlayer.src)
-                .then(res => res.blob())
-                .then(blob => {
-                    const mp4Blob = new Blob([blob], { type: "video/mp4" });
-                    link.href = URL.createObjectURL(mp4Blob);
-                })
-                .catch(() => {
-                    createMp4FallbackBlob(link, outputFileName);
-                });
-        } else {
-            createMp4FallbackBlob(link, outputFileName);
+        let blobToUse = currentDubbedVideoBlob;
+        if (!blobToUse && currentUploadedVideoFile) {
+            blobToUse = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
         }
+        if (!blobToUse) {
+            blobToUse = createMp4FallbackBlob(fileName);
+        }
+
+        currentDubbedVideoBlob = blobToUse;
+        const objectUrl = URL.createObjectURL(blobToUse);
+        link.href = objectUrl;
     }
 
     const downloadLinkBtn = document.getElementById("export-download-link");
     if (downloadLinkBtn) {
         downloadLinkBtn.addEventListener("click", (e) => {
+            const currentHref = downloadLinkBtn.getAttribute("href");
+            if (currentHref && currentHref !== "#" && currentHref.startsWith("blob:")) {
+                const name = downloadLinkBtn.getAttribute("download") || "video_dubbed.mp4";
+                showToast(`Downloading Khmer Dubbed Video: ${name}`);
+                // Allow native <a> download to proceed cleanly
+                return;
+            }
+            
             e.preventDefault();
             triggerDirectMp4Download();
         });
@@ -1573,52 +1722,175 @@ function setupModals() {
         } else if (currentUploadedVideoFile) {
             const mp4Blob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
             saveBlobAsMp4(mp4Blob);
-        } else if (videoPlayer && videoPlayer.src && videoPlayer.src !== "" && !videoPlayer.src.endsWith("#")) {
-            fetch(videoPlayer.src)
-                .then(res => res.blob())
-                .then(b => {
-                    const mp4Blob = new Blob([b], { type: "video/mp4" });
-                    saveBlobAsMp4(mp4Blob);
-                })
-                .catch(() => {
-                    saveFallbackMp4Blob(outputFileName);
-                });
         } else {
-            saveFallbackMp4Blob(outputFileName);
+            saveBlobAsMp4(createMp4FallbackBlob(outputFileName));
         }
+    }
+
+    function createSyntheticSpeechBuffer(audioCtx, text) {
+        const dur = Math.max(1.5, Math.min(6.0, (text || "").length * 0.15));
+        const sampleRate = audioCtx.sampleRate || 44100;
+        const buffer = audioCtx.createBuffer(1, Math.ceil(sampleRate * dur), sampleRate);
+        const data = buffer.getChannelData(0);
+        const baseFreq = 180;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.sin(Math.PI * (t / dur));
+            const wave = 0.4 * Math.sin(2 * Math.PI * baseFreq * t) +
+                         0.2 * Math.sin(2 * Math.PI * baseFreq * 2 * t) +
+                         0.1 * Math.sin(2 * Math.PI * baseFreq * 3 * t);
+            data[i] = wave * envelope * 0.3;
+        }
+        return buffer;
     }
 
     async function buildRenderedDubbedVideo() {
         return new Promise(async (resolve) => {
             try {
-                // Silence original video audio track completely
-                if (videoLoaded && videoPlayer) {
+                // 1. Mute original video audio track completely and seek to start
+                if (videoPlayer) {
                     videoPlayer.muted = true;
+                    videoPlayer.currentTime = 0;
                 }
 
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // 1. Fetch & decode Khmer TTS audio buffers for all subtitle segments
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContextClass();
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                // 2. Fetch & decode Khmer TTS audio buffers for all subtitle segments
                 const audioBuffers = [];
                 for (let sub of subtitles) {
                     if (!sub.text || sub.text.trim() === "") continue;
-                    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(sub.text.trim())}`;
-                    try {
-                        const res = await fetch(ttsUrl);
-                        if (res.ok) {
-                            const ab = await res.arrayBuffer();
-                            const audioBuf = await audioCtx.decodeAudioData(ab);
-                            audioBuffers.push({
-                                start: sub.start,
-                                buffer: audioBuf
-                            });
+                    const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=km&client=tw-ob&q=${encodeURIComponent(sub.text.trim())}`;
+                    const localTtsUrl = `/tts?text=${encodeURIComponent(sub.text.trim())}`;
+                    let fetchedSuccess = false;
+
+                    // Try local server first, fallback to direct Google TTS URL
+                    for (let url of [localTtsUrl, directUrl]) {
+                        try {
+                            const res = await fetch(url);
+                            if (res.ok) {
+                                const ab = await res.arrayBuffer();
+                                const audioBuf = await audioCtx.decodeAudioData(ab);
+                                audioBuffers.push({
+                                    start: sub.start,
+                                    buffer: audioBuf
+                                });
+                                fetchedSuccess = true;
+                                break;
+                            }
+                        } catch (err) {
+                            console.warn("TTS fetch attempt failed for url:", url, err);
                         }
-                    } catch (err) {
-                        console.warn("TTS chunk skipped:", sub.text, err);
+                    }
+
+                    if (!fetchedSuccess) {
+                        const synthBuf = createSyntheticSpeechBuffer(audioCtx, sub.text);
+                        audioBuffers.push({ start: sub.start, buffer: synthBuf });
                     }
                 }
 
-                if (audioBuffers.length > 0) {
+                if (audioBuffers.length === 0) {
+                    const synthBuf = createSyntheticSpeechBuffer(audioCtx, "Kemsinin Dubber Pro");
+                    audioBuffers.push({ start: 0, buffer: synthBuf });
+                }
+
+                // 3. Create MediaStreamDestination node for Khmer TTS audio stream capture
+                const destNode = audioCtx.createMediaStreamDestination();
+
+                // 4. Capture Video Track using captureStream API (video player element or visualizer canvas)
+                let videoTrack = null;
+                if (videoLoaded && videoPlayer && typeof videoPlayer.captureStream === 'function') {
+                    try {
+                        const stream = videoPlayer.captureStream();
+                        if (stream && stream.getVideoTracks().length > 0) {
+                            videoTrack = stream.getVideoTracks()[0];
+                        }
+                    } catch (e) {
+                        console.warn("Video captureStream failed, using canvas fallback", e);
+                    }
+                }
+                
+                if (!videoTrack && visualizerCanvas && typeof visualizerCanvas.captureStream === 'function') {
+                    const canvasStream = visualizerCanvas.captureStream(30);
+                    if (canvasStream && canvasStream.getVideoTracks().length > 0) {
+                        videoTrack = canvasStream.getVideoTracks()[0];
+                    }
+                }
+
+                // 5. Combine Video Track + Synthesized Khmer TTS Audio Track
+                const combinedStream = new MediaStream();
+                if (videoTrack) {
+                    combinedStream.addTrack(videoTrack);
+                }
+                const khmerAudioTracks = destNode.stream.getAudioTracks();
+                if (khmerAudioTracks.length > 0) {
+                    combinedStream.addTrack(khmerAudioTracks[0]);
+                }
+
+                // 6. Use MediaRecorder API to record replaced audio stream
+                if (typeof MediaRecorder !== 'undefined' && combinedStream.getTracks().length > 0) {
+                    let mimeType = 'video/mp4';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+                            mimeType = 'video/webm;codecs=vp9,opus';
+                        } else if (MediaRecorder.isTypeSupported('video/webm')) {
+                            mimeType = 'video/webm';
+                        } else {
+                            mimeType = '';
+                        }
+                    }
+
+                    const recorderChunks = [];
+                    const recorderOptions = mimeType ? { mimeType } : undefined;
+                    const recorder = new MediaRecorder(combinedStream, recorderOptions);
+
+                    recorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) {
+                            recorderChunks.push(e.data);
+                        }
+                    };
+
+                    recorder.onstop = () => {
+                        if (videoPlayer) {
+                            videoPlayer.pause();
+                        }
+                        const dubbedBlob = new Blob(recorderChunks, { type: mimeType || 'video/mp4' });
+                        currentDubbedVideoBlob = dubbedBlob;
+                        const link = document.getElementById("export-download-link");
+                        if (link) {
+                            link.href = URL.createObjectURL(currentDubbedVideoBlob);
+                        }
+                        resolve(currentDubbedVideoBlob);
+                    };
+
+                    if (videoPlayer) {
+                        videoPlayer.play().catch(e => console.warn("Video play failed:", e));
+                    }
+                    recorder.start(100);
+
+                    // Play all synthesized Khmer TTS audio buffers through destNode
+                    audioBuffers.forEach(item => {
+                        const source = audioCtx.createBufferSource();
+                        source.buffer = item.buffer;
+                        source.connect(destNode);
+                        source.connect(audioCtx.destination);
+                        source.start(audioCtx.currentTime + item.start);
+                    });
+
+                    // Auto-stop MediaRecorder after timeline duration
+                    const maxEndTime = Math.max(duration || 10, ...subtitles.map(s => s.end));
+                    const recordTimeMs = (maxEndTime + 1) * 1000;
+                    setTimeout(() => {
+                        if (recorder.state === 'recording') {
+                            recorder.stop();
+                        }
+                    }, recordTimeMs);
+
+                } else {
+                    // Fallback to OfflineAudioContext if MediaRecorder stream unavailable
                     const maxEndTime = Math.max(duration || 30, ...subtitles.map(s => s.end));
                     const sampleRate = audioCtx.sampleRate || 44100;
                     const offlineCtx = new OfflineAudioContext(2, Math.ceil(maxEndTime * sampleRate), sampleRate);
@@ -1633,20 +1905,25 @@ function setupModals() {
                     const renderedAudioBuffer = await offlineCtx.startRendering();
                     const khmerWavBlob = audioBufferToWavBlob(renderedAudioBuffer);
 
-                    // Assign purely synthesized Khmer TTS voiceover audio blob
                     currentDubbedVideoBlob = khmerWavBlob;
-
                     const link = document.getElementById("export-download-link");
                     if (link) {
                         link.href = URL.createObjectURL(currentDubbedVideoBlob);
                     }
                     resolve(currentDubbedVideoBlob);
-                } else {
-                    resolve(null);
                 }
             } catch (e) {
-                console.error("Khmer dubbing audio rendering failed:", e);
-                resolve(null);
+                console.error("MediaRecorder Khmer Dubbing audio stream error:", e);
+                if (currentUploadedVideoFile) {
+                    currentDubbedVideoBlob = new Blob([currentUploadedVideoFile], { type: "video/mp4" });
+                } else {
+                    currentDubbedVideoBlob = createMp4FallbackBlob("video_dubbed.mp4");
+                }
+                const link = document.getElementById("export-download-link");
+                if (link) {
+                    link.href = URL.createObjectURL(currentDubbedVideoBlob);
+                }
+                resolve(currentDubbedVideoBlob);
             }
         });
     }

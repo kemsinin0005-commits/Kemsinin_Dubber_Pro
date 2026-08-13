@@ -2,10 +2,11 @@
 title Push to GitHub - Kemsinin Dubber
 echo ========================================================
 echo   Pushing Kemsinin Dubber to GitHub Repository
-echo   Repo: https://github.com/kemsinin0006-cyber/KEMSININ_DUBBER.git
+echo   Repo: https://github.com/kemsinin0005-commits/Kemsinin_Dubber_Pro.git
 echo ========================================================
 echo.
 echo Executing git push...
+git remote set-url origin https://github.com/kemsinin0005-commits/Kemsinin_Dubber_Pro.git
 git push -u origin main
 echo.
 if %ERRORLEVEL% EQU 0 (

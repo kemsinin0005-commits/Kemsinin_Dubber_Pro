@@ -301,8 +301,13 @@ class BatchDubberDialog(QDialog):
         self.btn_select.setStyleSheet("background-color: #242846; color: white; border-radius: 6px; padding: 6px 12px; font-weight: bold;")
         self.btn_select.clicked.connect(self.select_directory)
         
+        self.btn_clear_file = QPushButton("🗑️ Clear File")
+        self.btn_clear_file.setStyleSheet("background-color: #c2185b; color: white; border-radius: 6px; padding: 6px 12px; font-weight: bold;")
+        self.btn_clear_file.clicked.connect(self.clear_files)
+        
         dir_layout.addWidget(self.dir_edit)
         dir_layout.addWidget(self.btn_select)
+        dir_layout.addWidget(self.btn_clear_file)
         layout.addLayout(dir_layout)
         
         # Table of files
